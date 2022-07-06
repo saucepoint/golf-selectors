@@ -14,7 +14,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def find_selector(function_names, q):
+def find_selector(function_names, q, param_signature):
     # brute force search through the function names
     # identify which function name produces the function selector
     # with the most number of leading zeros
@@ -23,7 +23,7 @@ def find_selector(function_names, q):
     best_selector = None
     for function_name in function_names:
         # parse out the selector (first 4 bytes of the keccak hash)
-        selector = Web3.keccak(text=f'{function_name}()').hex()[:10]
+        selector = Web3.keccak(text=f'{function_name}({param_signature})').hex()[:10]
 
         # convert function selector to integer
         selector_int = int.from_bytes(bytes(HexBytes(selector)), 'big')
@@ -40,7 +40,7 @@ def find_selector(function_names, q):
         'int': min_selector
     })
 
-def find():
+def find(param_signature):
     # load in 10,000 common google searched words
     with open('words.txt', 'r') as f:
         words = [word.strip() for word in f.readlines()]
@@ -61,7 +61,7 @@ def find():
     jobs = []
     q = Queue()
     for chunk in chunks(function_names, 500_000):
-        p = Process(target=find_selector, args=(chunk, q))
+        p = Process(target=find_selector, args=(chunk, q, param_signature))
         p.start()
         jobs.append(p)
         time.sleep(0.1)
@@ -81,4 +81,9 @@ def find():
     print(f'{best_name} ({best_selector})')
 
 if __name__ == '__main__':
-    find()
+    import sys
+    if len(sys.argv) != 2:
+        print("Run as python find.py uint256,uint256")
+        print("\tReplace the parameter signature as you wish. No Spaces")
+        sys.exit(-1)
+    find(sys.argv[1])
